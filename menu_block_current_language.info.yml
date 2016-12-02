@@ -1,0 +1,6 @@
+name: Menu block current language
+type: module
+description: Filter all menu links that does not have translation for current language
+core: 8.x
+dependencies:
+  - menu_link_content
