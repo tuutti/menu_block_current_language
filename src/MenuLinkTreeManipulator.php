@@ -2,9 +2,11 @@
 
 namespace Drupal\menu_block_current_language;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\menu_link_content\Plugin\Menu\MenuLinkContent;
+use Drupal\views\Plugin\Menu\ViewsMenuLink;
 
 /**
  * Class MenuLinkTreeManipulator.
@@ -28,16 +30,26 @@ class MenuLinkTreeManipulator {
   protected $languageManager;
 
   /**
+   * The config factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
    * MenuLinkTreeManipulator constructor.
    *
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   *   The config factory.
    */
-  public function __construct(LanguageManagerInterface $language_manager, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(LanguageManagerInterface $language_manager, EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory) {
     $this->languageManager = $language_manager;
     $this->entityTypeManager = $entity_type_manager;
+    $this->configFactory = $config_factory;
   }
 
   /**
@@ -73,18 +85,44 @@ class MenuLinkTreeManipulator {
    *   The manipulated menu link tree.
    */
   public function filterLanguages(array $tree) {
+    $current_language = $this->languageManager->getCurrentLanguage()->getId();
+
     foreach ($tree as $index => $item) {
+      $link = $item->link;
       // This only works with translated menu links.
-      if (!$item->link instanceof MenuLinkContent || !$entity = $this->getEntity($item->link)) {
+      if ($link instanceof MenuLinkContent && $entity = $this->getEntity($link)) {
+        /** @var \Drupal\menu_link_content\Entity\MenuLinkContent $entity */
+        if (!$entity->isTranslatable()) {
+          // Skip untranslatable items.
+          continue;
+        }
+        if (!$entity->hasTranslation($current_language)) {
+          unset($tree[$index]);
+        }
         continue;
       }
-      /** @var \Drupal\menu_link_content\Entity\MenuLinkContent $entity */
-      if (!$entity->isTranslatable()) {
-        // Skip untranslatable items.
+      elseif ($link instanceof ViewsMenuLink) {
+        $view_id = sprintf('views.view.%s', $link->getMetaData()['view_id']);
+
+        // Make sure that original configuration exists for given view.
+        if (!$original = $this->configFactory->get($view_id)->get('langcode')) {
+          continue;
+        }
+        // ConfigurableLanguageManager::getLnguageConfigOverride() always
+        // returns a new configuration override for original language.
+        if ($current_language === $original) {
+          continue;
+        }
+        /** @var \Drupal\language\Config\LanguageConfigOverride $config */
+        $config = $this->languageManager->getLanguageConfigOverride($current_language, $view_id);
+
+        // There is no way to know whether menu link is actually translated
+        // except checking if view has an existing configuration for
+        // the current language.
+        if ($config->isNew()) {
+          unset($tree[$index]);
+        }
         continue;
-      }
-      if (!$entity->hasTranslation($this->languageManager->getCurrentLanguage()->getId())) {
-        unset($tree[$index]);
       }
     }
     return $tree;

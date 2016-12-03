@@ -35,6 +35,7 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     'menu_ui',
     'menu_link_content',
     'menu_block_current_language',
+    'menu_block_current_language_views_test',
   ];
 
   /**
@@ -110,30 +111,67 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
   public function testSingleLanguage() {
     $link = $this->createTestLink('en');
 
-    $this->drupalGet('test-page');
+    $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
     $this->assertLink($link->label());
 
-    // No french translation, test that link is not visible.
-    $url = Url::fromRoute('test_page_test.test_page', [
-      'language' => 'fr',
-    ]);
-    $this->drupalGet($url);
+    $this->drupalGet('test-page', ['query' => ['language' => 'fr']]);
     $this->assertNoLink($link->label());
 
     // Add translation and test that links gets visible.
     $link->addTranslation('fr', ['title' => 'French title'])->save();
-    $this->drupalGet($url);
+    $this->drupalGet('test-page', ['query' => ['language' => 'fr']]);
     $this->assertLink('French title');
+
+    // French link should not be visible to english.
+    $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
+    $this->assertNoLink('French title');
+
+    // Test French only link.
+    $link = $this->createTestLink('fr');
+    $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
+    $this->assertNoLink($link->label());
 
     // Test that untranslatable link is visible for both languages.
     foreach ([LanguageInterface::LANGCODE_NOT_APPLICABLE, LanguageInterface::LANGCODE_NOT_SPECIFIED] as $langcode) {
       $link = $this->createTestLink($langcode);
-      $this->drupalGet('test-page');
-      $this->assertLink($link->label());
 
-      $this->drupalGet($url);
-      $this->assertLink($link->label());
+      foreach (['fr', 'en'] as $lang) {
+        $this->drupalGet('test-page', ['query' => ['language' => $lang]]);
+        $this->assertLink($link->label());
+      }
     }
+
+    // Test that views menu link is visible for english.
+    $this->drupalGet('test-view', ['query' => ['language' => 'en']]);
+    $this->assertLink('Test menu link');
+
+    // Test that views menu link is not visible for fr without a translation.
+    $this->drupalGet('test-view', ['query' => ['language' => 'fr']]);
+    $this->assertNoLink('Test menu link');
+
+    /* @var \Drupal\Core\Config\StorageInterface $sync */
+    $sync = \Drupal::service('config.storage.sync');
+    $this->copyConfig(\Drupal::service('config.storage'), $sync);
+    /* @var \Drupal\Core\Config\StorageInterface $override_sync */
+    $override_sync = $sync->createCollection('language.fr');
+    $override_sync->write('views.view.test_view', [
+      'display' => [
+        'page_1' => [
+          'display_options' => ['menu' => ['title' => 'FR Test menu link']],
+        ],
+      ],
+    ]);
+    $this->configImporter()->import();
+    $this->rebuildContainer();
+    \Drupal::service('router.builder')->rebuild();
+
+    // Make sure view title gets translated and english title is not visible.
+    $this->drupalGet('test-view', ['query' => ['language' => 'fr']]);
+    $this->assertLink('FR Test menu link');
+
+    // Make sure french title is not visible to english page.
+    $this->drupalGet('test-view', ['query' => ['language' => 'en']]);
+    $this->assertNoLink('FR Test menu link');
   }
 
 }
