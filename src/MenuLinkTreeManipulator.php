@@ -109,16 +109,14 @@ class MenuLinkTreeManipulator {
           continue;
         }
         // ConfigurableLanguageManager::getLnguageConfigOverride() always
-        // returns a new configuration override for original language.
+        // returns a new configuration override for the original language.
         if ($current_language === $original) {
           continue;
         }
         /** @var \Drupal\language\Config\LanguageConfigOverride $config */
         $config = $this->languageManager->getLanguageConfigOverride($current_language, $view_id);
-
-        // There is no way to know whether menu link is actually translated
-        // except checking if view has an existing configuration for
-        // the current language.
+        // Configuration override will be marked as a new if it does not
+        // exist (thus has no translation).
         if ($config->isNew()) {
           unset($tree[$index]);
         }
