@@ -5,8 +5,11 @@ namespace Drupal\menu_block_current_language;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\menu_block_current_language\Event\Events;
+use Drupal\menu_block_current_language\Event\HasTranslationEvent;
 use Drupal\menu_link_content\Plugin\Menu\MenuLinkContent;
 use Drupal\views\Plugin\Menu\ViewsMenuLink;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Class MenuLinkTreeManipulator.
@@ -37,6 +40,13 @@ class MenuLinkTreeManipulator {
   protected $configFactory;
 
   /**
+   * The event dispatcher.
+   *
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
+   */
+  protected $eventDispatcher;
+
+  /**
    * MenuLinkTreeManipulator constructor.
    *
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
@@ -45,11 +55,14 @@ class MenuLinkTreeManipulator {
    *   The entity type manager.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The config factory.
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
+   *   The event dispatcher.
    */
-  public function __construct(LanguageManagerInterface $language_manager, EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory) {
+  public function __construct(LanguageManagerInterface $language_manager, EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory, EventDispatcherInterface $event_dispatcher) {
     $this->languageManager = $language_manager;
     $this->entityTypeManager = $entity_type_manager;
     $this->configFactory = $config_factory;
+    $this->eventDispatcher = $event_dispatcher;
   }
 
   /**
@@ -89,6 +102,10 @@ class MenuLinkTreeManipulator {
 
     foreach ($tree as $index => $item) {
       $link = $item->link;
+      /** @var HasTranslationEvent $event */
+      // Allow other modules to determine visibility as well.
+      $event = $this->eventDispatcher->dispatch(Events::HAS_TRANSLATION, new HasTranslationEvent($link, TRUE));
+
       // This only works with translated menu links.
       if ($link instanceof MenuLinkContent && $entity = $this->getEntity($link)) {
         /** @var \Drupal\menu_link_content\Entity\MenuLinkContent $entity */
@@ -97,9 +114,8 @@ class MenuLinkTreeManipulator {
           continue;
         }
         if (!$entity->hasTranslation($current_language)) {
-          unset($tree[$index]);
+          $event->setHasTranslation(FALSE);
         }
-        continue;
       }
       elseif ($link instanceof ViewsMenuLink) {
         $view_id = sprintf('views.view.%s', $link->getMetaData()['view_id']);
@@ -118,9 +134,18 @@ class MenuLinkTreeManipulator {
         // Configuration override will be marked as a new if it does not
         // exist (thus has no translation).
         if ($config->isNew()) {
-          unset($tree[$index]);
+          $event->setHasTranslation(FALSE);
         }
-        continue;
+      }
+      // Allow custom menu link types to expose multilingual capasities
+      // through an interface.
+      elseif ($link instanceof MenuLinkTranslatableInterface) {
+        if (!$link->hasTranslation($current_language)) {
+          $event->setHasTranslation(FALSE);
+        }
+      }
+      if ($event->hasTranslation() === FALSE) {
+        unset($tree[$index]);
       }
     }
     return $tree;
