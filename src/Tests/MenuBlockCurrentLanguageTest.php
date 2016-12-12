@@ -4,7 +4,6 @@ namespace Drupal\menu_block_current_language\Tests;
 
 use Drupal\content_translation\Tests\ContentTranslationTestBase;
 use Drupal\Core\Language\LanguageInterface;
-use Drupal\Core\Url;
 use Drupal\menu_link_content\Entity\MenuLinkContent;
 
 /**
@@ -87,19 +86,24 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
    *
    * @param string $langcode
    *   The language code.
+   * @param string $title
+   *   The title.
+   * @param array $overrides
+   *   The overrides.
    *
    * @return \Drupal\Core\Entity\EntityInterface
    *   The menu link.
    */
-  protected function createTestLink($langcode) {
-    $link = MenuLinkContent::create([
+  protected function createTestLink($langcode, $title, array $overrides = []) {
+    $defaults = [
       'menu_name' => 'main',
-      'title' => $this->randomString(),
+      'title' => $title,
       'langcode' => $langcode,
       'link' => [
         'uri' => 'internal:/test-page',
       ],
-    ]);
+    ];
+    $link = MenuLinkContent::create($overrides + $defaults);
     $link->save();
 
     return $link;
@@ -109,7 +113,9 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
    * Tests that menu links are only visible for translated languages.
    */
   public function testSingleLanguage() {
-    $link = $this->createTestLink('en');
+    $link = $this->createTestLink('en', 'First link', [
+      'expanded' => 1,
+    ]);
 
     $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
     $this->assertLink($link->label());
@@ -118,22 +124,34 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     $this->assertNoLink($link->label());
 
     // Add translation and test that links gets visible.
-    $link->addTranslation('fr', ['title' => 'French title'])->save();
+    $link->addTranslation('fr', ['title' => 'First french title'])->save();
     $this->drupalGet('test-page', ['query' => ['language' => 'fr']]);
-    $this->assertLink('French title');
+    $this->assertLink('First french title');
 
     // French link should not be visible to english.
     $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
-    $this->assertNoLink('French title');
+    $this->assertNoLink('First french title');
 
     // Test French only link.
-    $link = $this->createTestLink('fr');
+    $link2 = $this->createTestLink('fr', 'French only title');
     $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
-    $this->assertNoLink($link->label());
+    $this->assertNoLink($link2->label());
+
+    // Test expanded menu links.
+    $sublink = $this->createTestLink('en', 'Sublink en', [
+      'parent' => $link->getPluginId(),
+    ]);
+    $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
+    $this->assertLink($sublink->label());
+    $this->drupalGet('test-page', ['query' => ['language' => 'fr']]);
+    $this->assertNoLink($sublink->label());
+    $sublink->addTranslation('fr', ['title' => 'French sublink'])->save();
+    $this->drupalGet('test-page', ['query' => ['language' => 'fr']]);
+    $this->assertLink('French sublink');
 
     // Test that untranslatable link is visible for both languages.
     foreach ([LanguageInterface::LANGCODE_NOT_APPLICABLE, LanguageInterface::LANGCODE_NOT_SPECIFIED] as $langcode) {
-      $link = $this->createTestLink($langcode);
+      $link = $this->createTestLink($langcode, 'Untranslated ' . $langcode);
 
       foreach (['fr', 'en'] as $lang) {
         $this->drupalGet('test-page', ['query' => ['language' => $lang]]);

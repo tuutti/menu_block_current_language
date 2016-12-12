@@ -131,8 +131,8 @@ class MenuLinkTreeManipulator {
         }
         /** @var \Drupal\language\Config\LanguageConfigOverride $config */
         $config = $this->languageManager->getLanguageConfigOverride($current_language, $view_id);
-        // Configuration override will be marked as a new if it does not
-        // exist (thus has no translation).
+        // Configuration override will be marked as a new if one does not
+        // exist for current language (thus has no translation).
         if ($config->isNew()) {
           $event->setHasTranslation(FALSE);
         }
@@ -146,6 +146,10 @@ class MenuLinkTreeManipulator {
       }
       if ($event->hasTranslation() === FALSE) {
         unset($tree[$index]);
+      }
+      // Handle expanded menu links.
+      elseif ($item->hasChildren) {
+        $item->subtree = $this->filterLanguages($item->subtree);
       }
     }
     return $tree;
