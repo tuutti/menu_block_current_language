@@ -2,6 +2,7 @@
 
 namespace Drupal\menu_block_current_language\Plugin\Block;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\system\Plugin\Block\SystemMenuBlock;
 
 /**
@@ -39,11 +40,60 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
     $manipulators = [
       ['callable' => 'menu.default_tree_manipulators:checkAccess'],
       ['callable' => 'menu.default_tree_manipulators:generateIndexAndSort'],
-      ['callable' => 'menu_block_current_language_tree_manipulator::filterLanguages'],
+      [
+        'callable' => 'menu_block_current_language_tree_manipulator::filterLanguages',
+        'args' => [$this->configuration],
+      ],
     ];
     $tree = $this->menuTree->transform($tree, $manipulators);
 
     return $this->menuTree->build($tree);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function blockSubmit($form, FormStateInterface $form_state) {
+    $this->configuration['translatable_types'] = $form_state->getValue('translatable_types');
+    parent::blockSubmit($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function blockForm($form, FormStateInterface $form_state) {
+    $form = parent::blockForm($form, $form_state);
+
+    $form['translation'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Translation settings'),
+      '#open' => TRUE,
+    ];
+    $form['translation']['translatable_types'] = [
+      '#type' => 'checkboxes',
+      '#title' => $this->t('Translatable menu link types'),
+      '#options' => [
+        'menu_link_content' => $this->t('Menu link content'),
+        'views' => $this->t('Views'),
+        'standard' => $this->t('String translated (Experimental)'),
+      ],
+      '#default_value' => $this->configuration['translatable_types'],
+    ];
+    return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function defaultConfiguration() {
+    // Translate views and menu link content links by default.
+    $config = [
+      'translatable_types' => [
+        'menu_link_content',
+        'views',
+      ],
+    ];
+    return $config + parent::defaultConfiguration();
   }
 
 }

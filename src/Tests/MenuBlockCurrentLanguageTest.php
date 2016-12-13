@@ -28,6 +28,7 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
    */
   public static $modules = [
     'language',
+    'locale',
     'content_translation',
     'block',
     'test_page_test',
@@ -190,6 +191,38 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     // Make sure french title is not visible to english page.
     $this->drupalGet('test-view', ['query' => ['language' => 'en']]);
     $this->assertNoLink('FR Test menu link');
+
+    // Make sure untranslated (string) menu link is not visible.
+    $this->drupalGet('test-view', ['query' => ['language' => 'fr']]);
+    $this->assertNoLink('Home');
+
+    /** @var \Drupal\locale\StringDatabaseStorage $locale_storage */
+    $locale_storage = $this->container->get('locale.storage');
+    $translations = $locale_storage->getTranslations([], [
+      'filters' => ['source' => 'Home'],
+    ]);
+    var_dump($translations);
+    /** @var \Drupal\locale\TranslationString $translation */
+    foreach ($translations as $translation) {
+      if ($translation->source !== 'Home') {
+        continue;
+      }
+      $target = $locale_storage->createTranslation([
+        'lid' => $translation->lid,
+        'language' => 'fr',
+      ]);
+      $target->setString('French home')
+        ->setCustomized()
+        ->save();
+      _locale_refresh_translations(['fr'], [$translation->lid]);
+    }
+    // Make sure translated link is visible and translated link is not visible
+    // to wrong language.
+    $this->drupalGet('test-page', ['query' => ['language' => 'fr']]);
+    $this->assertLink('French home');
+    $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
+    $this->assertLink('Home');
+    $this->assertNoLink('French home');
   }
 
 }

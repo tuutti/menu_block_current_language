@@ -5,6 +5,8 @@ namespace Drupal\menu_block_current_language;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\locale\StringStorageInterface;
 use Drupal\menu_block_current_language\Event\Events;
 use Drupal\menu_block_current_language\Event\HasTranslationEvent;
 use Drupal\menu_link_content\Plugin\Menu\MenuLinkContent;
@@ -47,6 +49,13 @@ class MenuLinkTreeManipulator {
   protected $eventDispatcher;
 
   /**
+   * The locale storage.
+   *
+   * @var \Drupal\locale\StringStorageInterface
+   */
+  protected $localeStorage;
+
+  /**
    * MenuLinkTreeManipulator constructor.
    *
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
@@ -57,12 +66,15 @@ class MenuLinkTreeManipulator {
    *   The config factory.
    * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
    *   The event dispatcher.
+   * @param \Drupal\locale\StringStorageInterface $locale_storage
+   *   The locale storage.
    */
-  public function __construct(LanguageManagerInterface $language_manager, EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory, EventDispatcherInterface $event_dispatcher) {
+  public function __construct(LanguageManagerInterface $language_manager, EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory, EventDispatcherInterface $event_dispatcher, StringStorageInterface $locale_storage) {
     $this->languageManager = $language_manager;
     $this->entityTypeManager = $entity_type_manager;
     $this->configFactory = $config_factory;
     $this->eventDispatcher = $event_dispatcher;
+    $this->localeStorage = $locale_storage;
   }
 
   /**
@@ -89,19 +101,73 @@ class MenuLinkTreeManipulator {
   }
 
   /**
+   * Check if given string has a string translation.
+   *
+   * @param \Drupal\Core\StringTranslation\TranslatableMarkup $markup
+   *   The markup.
+   *
+   * @return bool
+   *   TRUE if found translation, FALSE if not.
+   */
+  protected function hasStringTranslation(TranslatableMarkup $markup) {
+    // Skip this check for source language.
+    // @todo This might cause some issues if string source language is not english.
+    if ($this->languageManager->getCurrentLanguage() == $this->languageManager->getDefaultLanguage()) {
+      return TRUE;
+    }
+    $conditions = [
+      'language' => $this->languageManager->getCurrentLanguage()->getId(),
+      'translated' => TRUE,
+    ];
+    // Attempt to load translated menu links for current language.
+    $translations = $this->localeStorage->getTranslations($conditions, [
+      'filters' => ['source' => $markup->getUntranslatedString()],
+    ]);
+    /** @var \Drupal\locale\TranslationString $translation */
+    foreach ($translations as $translation) {
+      // No translation found / original string found.
+      if ($translation->isNew()) {
+        continue;
+      }
+      // Make sure source strings are identical as getTranslations()
+      // load strings with wildcard (%string%) and might return
+      // an unexpected results.
+      if ($translation->source == $markup->getUntranslatedString()) {
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
+
+  /**
    * Filter out links that are not translated to the current language.
    *
    * @param \Drupal\Core\Menu\MenuLinkTreeElement[] $tree
    *   The menu link tree to manipulate.
+   * @param array $configuration
+   *   The menu block configuration.
    *
    * @return \Drupal\Core\Menu\MenuLinkTreeElement[]
    *   The manipulated menu link tree.
    */
-  public function filterLanguages(array $tree) {
+  public function filterLanguages(array $tree, array $configuration = []) {
+    // Exit gracefully when no block configuration is given.
+    if (empty($configuration['translatable_types'])) {
+      $configuration['translatable_types'] = [];
+    }
     $current_language = $this->languageManager->getCurrentLanguage()->getId();
 
     foreach ($tree as $index => $item) {
+      // Handle expanded menu links.
+      if ($item->hasChildren) {
+        $item->subtree = $this->filterLanguages($item->subtree);
+      }
       $link = $item->link;
+
+      // Filter only enabled types.
+      if (!in_array($link->getProvider(), $configuration['translatable_types'])) {
+        continue;
+      }
       /** @var HasTranslationEvent $event */
       // Allow other modules to determine visibility as well.
       $event = $this->eventDispatcher->dispatch(Events::HAS_TRANSLATION, new HasTranslationEvent($link, TRUE));
@@ -114,6 +180,15 @@ class MenuLinkTreeManipulator {
           continue;
         }
         if (!$entity->hasTranslation($current_language)) {
+          $event->setHasTranslation(FALSE);
+        }
+      }
+      // String translated menu links.
+      elseif ($link->getPluginDefinition()['title'] instanceof TranslatableMarkup) {
+        /** @var TranslatableMarkup $markup */
+        $markup = $link->getPluginDefinition()['title'];
+
+        if (!$this->hasStringTranslation($markup)) {
           $event->setHasTranslation(FALSE);
         }
       }
@@ -137,7 +212,7 @@ class MenuLinkTreeManipulator {
           $event->setHasTranslation(FALSE);
         }
       }
-      // Allow custom menu link types to expose multilingual capasities
+      // Allow custom menu link types to expose multilingual capabilities
       // through an interface.
       elseif ($link instanceof MenuLinkTranslatableInterface) {
         if (!$link->hasTranslation($current_language)) {
@@ -146,10 +221,6 @@ class MenuLinkTreeManipulator {
       }
       if ($event->hasTranslation() === FALSE) {
         unset($tree[$index]);
-      }
-      // Handle expanded menu links.
-      elseif ($item->hasChildren) {
-        $item->subtree = $this->filterLanguages($item->subtree);
       }
     }
     return $tree;
