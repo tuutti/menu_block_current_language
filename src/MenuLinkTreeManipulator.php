@@ -146,7 +146,7 @@ class MenuLinkTreeManipulator {
    * @param \Drupal\Core\Menu\MenuLinkTreeElement[] $tree
    *   The menu link tree to manipulate.
    * @param array $providers
-   *   The menu block translation providers.
+   *   The menu block translatable link types.
    *
    * @return \Drupal\Core\Menu\MenuLinkTreeElement[]
    *   The manipulated menu link tree.
@@ -161,11 +161,11 @@ class MenuLinkTreeManipulator {
       }
       $link = $item->link;
 
-      // 'Default' menu links have no common provider so fallback to 'default'.
+      // MenuLinkDefault links have no common provider so fallback to 'default'.
       $provider = $link instanceof MenuLinkDefault ? 'default' : $link->getProvider();
       // Skip checks for disabled core providers. Isset check is used
       // to determine whether provider should be checked and empty whether
-      // the provider is enabled or not.
+      // the provider is enabled or not (0 = disabled).
       if (isset($providers[$provider]) && empty($providers[$provider])) {
         continue;
       }

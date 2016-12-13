@@ -66,7 +66,7 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
 
     $form['translation_providers'] = [
       '#type' => 'checkboxes',
-      '#title' => $this->t('Enabled core translation providers'),
+      '#title' => $this->t('Enabled Core link types'),
       '#options' => [
         'menu_link_content' => $this->t('Menu link content'),
         'views' => $this->t('Views'),

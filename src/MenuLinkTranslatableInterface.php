@@ -12,6 +12,8 @@ interface MenuLinkTranslatableInterface {
   /**
    * Determines if menu link has translation for current langauge.
    *
+   * Menu link will be hidden if no translation is found.
+   *
    * @param string $langcode
    *   The langcode.
    *
