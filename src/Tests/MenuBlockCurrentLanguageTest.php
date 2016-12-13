@@ -53,6 +53,13 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
   protected $regularUser;
 
   /**
+   * The menu block.
+   *
+   * @var \Drupal\block\Entity\Block
+   */
+  protected $menuBlock;
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp() {
@@ -69,7 +76,7 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
       'language_interface[weight][language-session]' => -12,
     ];
     $this->drupalPostForm('admin/config/regional/language/detection', $edit, t('Save settings'));
-    $this->placeBlock('menu_block_current_language:main');
+    $this->menuBlock = $this->placeBlock('menu_block_current_language:main');
   }
 
   /**
@@ -113,7 +120,16 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
   /**
    * Tests that menu links are only visible for translated languages.
    */
-  public function testSingleLanguage() {
+  public function testMenuBlockLanguageFilters() {
+    $config_key = sprintf('block.block.%s', $this->menuBlock->id());
+
+    // Disable content entity links translation.
+    $this->config($config_key)->set('settings.translation_providers', [
+      'menu_link_content' => '0',
+      'views' => 'views',
+      'default' => 'default',
+    ])->save();
+
     $link = $this->createTestLink('en', 'First link', [
       'expanded' => 1,
     ]);
@@ -121,6 +137,20 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
     $this->assertLink($link->label());
 
+    // Make sure menu link is visible for both languages when
+    // menu_link_content provider is disabled.
+    $this->drupalGet('test-page', ['query' => ['language' => 'fr']]);
+    $this->assertLink($link->label());
+
+    // Enable content entity links translation.
+    $this->config($config_key)->set('settings.translation_providers', [
+      'menu_link_content' => 'menu_link_content',
+      'views' => 'views',
+      'default' => 'default',
+    ])->save();
+
+    // Make sure link is not visible when menu_link_content
+    // provider is enabled and no translation is available.
     $this->drupalGet('test-page', ['query' => ['language' => 'fr']]);
     $this->assertNoLink($link->label());
 
@@ -168,6 +198,18 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     $this->drupalGet('test-view', ['query' => ['language' => 'fr']]);
     $this->assertNoLink('Test menu link');
 
+    // Disable views links translation.
+    $this->config($config_key)->set('settings.translation_providers', [
+      'menu_link_content' => 'menu_link_content',
+      'views' => '0',
+      'default' => 'default',
+    ])->save();
+
+    // Test that english views menu link is visible for fr
+    // without a translation when provider is disabled.
+    $this->drupalGet('test-view', ['query' => ['language' => 'fr']]);
+    $this->assertLink('Test menu link');
+
     /* @var \Drupal\Core\Config\StorageInterface $sync */
     $sync = \Drupal::service('config.storage.sync');
     $this->copyConfig(\Drupal::service('config.storage'), $sync);
@@ -192,6 +234,12 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     $this->drupalGet('test-view', ['query' => ['language' => 'en']]);
     $this->assertNoLink('FR Test menu link');
 
+    $this->config($config_key)->set('settings.translation_providers', [
+      'menu_link_content' => 'menu_link_content',
+      'views' => 'views',
+      'default' => 'default',
+    ])->save();
+
     // Make sure untranslated (string) menu link is not visible.
     $this->drupalGet('test-view', ['query' => ['language' => 'fr']]);
     $this->assertNoLink('Home');
@@ -201,7 +249,7 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     $translations = $locale_storage->getTranslations([], [
       'filters' => ['source' => 'Home'],
     ]);
-    var_dump($translations);
+
     /** @var \Drupal\locale\TranslationString $translation */
     foreach ($translations as $translation) {
       if ($translation->source !== 'Home') {

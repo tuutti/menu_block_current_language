@@ -8,4 +8,9 @@ block.settings.menu_block_current_language:*:
     depth:
       type: integer
       label: 'Maximum number of levels'
-
+    translation_providers:
+      type: sequence
+      label: 'Enabled translation providers'
+      sequence:
+        type: string
+        label: 'Provider'

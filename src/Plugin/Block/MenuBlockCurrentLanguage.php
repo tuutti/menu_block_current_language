@@ -42,7 +42,7 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
       ['callable' => 'menu.default_tree_manipulators:generateIndexAndSort'],
       [
         'callable' => 'menu_block_current_language_tree_manipulator::filterLanguages',
-        'args' => [$this->configuration],
+        'args' => [$this->configuration['translation_providers']],
       ],
     ];
     $tree = $this->menuTree->transform($tree, $manipulators);
@@ -54,7 +54,7 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
    * {@inheritdoc}
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
-    $this->configuration['translatable_types'] = $form_state->getValue('translatable_types');
+    $this->configuration['translation_providers'] = $form_state->getValue('translation_providers');
     parent::blockSubmit($form, $form_state);
   }
 
@@ -64,20 +64,15 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
   public function blockForm($form, FormStateInterface $form_state) {
     $form = parent::blockForm($form, $form_state);
 
-    $form['translation'] = [
-      '#type' => 'details',
-      '#title' => $this->t('Translation settings'),
-      '#open' => TRUE,
-    ];
-    $form['translation']['translatable_types'] = [
+    $form['translation_providers'] = [
       '#type' => 'checkboxes',
-      '#title' => $this->t('Translatable menu link types'),
+      '#title' => $this->t('Enabled core translation providers'),
       '#options' => [
         'menu_link_content' => $this->t('Menu link content'),
         'views' => $this->t('Views'),
-        'standard' => $this->t('String translated (Experimental)'),
+        'default' => $this->t('String translated (Experimental)'),
       ],
-      '#default_value' => $this->configuration['translatable_types'],
+      '#default_value' => $this->configuration['translation_providers'],
     ];
     return $form;
   }
@@ -88,9 +83,10 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
   public function defaultConfiguration() {
     // Translate views and menu link content links by default.
     $config = [
-      'translatable_types' => [
-        'menu_link_content',
-        'views',
+      'translation_providers' => [
+        'views' => 'views',
+        'menu_link_content' => 'menu_link_content',
+        'default' => 0,
       ],
     ];
     return $config + parent::defaultConfiguration();

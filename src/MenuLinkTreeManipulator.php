@@ -5,6 +5,7 @@ namespace Drupal\menu_block_current_language;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\Core\Menu\MenuLinkDefault;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\locale\StringStorageInterface;
 use Drupal\menu_block_current_language\Event\Events;
@@ -144,28 +145,28 @@ class MenuLinkTreeManipulator {
    *
    * @param \Drupal\Core\Menu\MenuLinkTreeElement[] $tree
    *   The menu link tree to manipulate.
-   * @param array $configuration
-   *   The menu block configuration.
+   * @param array $providers
+   *   The menu block translation providers.
    *
    * @return \Drupal\Core\Menu\MenuLinkTreeElement[]
    *   The manipulated menu link tree.
    */
-  public function filterLanguages(array $tree, array $configuration = []) {
-    // Exit gracefully when no block configuration is given.
-    if (empty($configuration['translatable_types'])) {
-      $configuration['translatable_types'] = [];
-    }
+  public function filterLanguages(array $tree, array $providers = []) {
     $current_language = $this->languageManager->getCurrentLanguage()->getId();
 
     foreach ($tree as $index => $item) {
       // Handle expanded menu links.
       if ($item->hasChildren) {
-        $item->subtree = $this->filterLanguages($item->subtree);
+        $item->subtree = $this->filterLanguages($item->subtree, $providers);
       }
       $link = $item->link;
 
-      // Filter only enabled types.
-      if (!in_array($link->getProvider(), $configuration['translatable_types'])) {
+      // 'Default' menu links have no common provider so fallback to 'default'.
+      $provider = $link instanceof MenuLinkDefault ? 'default' : $link->getProvider();
+      // Skip checks for disabled core providers. Isset check is used
+      // to determine whether provider should be checked and empty whether
+      // the provider is enabled or not.
+      if (isset($providers[$provider]) && empty($providers[$provider])) {
         continue;
       }
       /** @var HasTranslationEvent $event */
