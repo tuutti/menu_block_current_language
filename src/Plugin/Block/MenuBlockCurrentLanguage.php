@@ -70,7 +70,7 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
       '#options' => [
         'menu_link_content' => $this->t('Menu link content'),
         'views' => $this->t('Views'),
-        'default' => $this->t('String translated (Experimental)'),
+        'default' => $this->t('String translation (Experimental)'),
       ],
       '#default_value' => $this->configuration['translation_providers'],
     ];
