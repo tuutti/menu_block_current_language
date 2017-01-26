@@ -3,6 +3,7 @@
 namespace Drupal\menu_block_current_language\Plugin\Block;
 
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Menu\MenuTreeParameters;
 use Drupal\system\Plugin\Block\SystemMenuBlock;
 
 /**
@@ -22,8 +23,16 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
    */
   public function build() {
     $menu_name = $this->getDerivativeId();
-    $parameters = $this->menuTree->getCurrentRouteMenuTreeParameters($menu_name);
 
+    // @note: Requires patch from #2594425.
+    if (!empty($this->configuration['expand_all_items'])) {
+      $parameters = new MenuTreeParameters();
+      $active_trail = $this->menuActiveTrail->getActiveTrailIds($menu_name);
+      $parameters->setActiveTrail($active_trail);
+    }
+    else {
+      $parameters = $this->menuTree->getCurrentRouteMenuTreeParameters($menu_name);
+    }
     // Adjust the menu tree parameters based on the block's configuration.
     $level = $this->configuration['level'];
     $depth = $this->configuration['depth'];
@@ -39,6 +48,7 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
     // For menu blocks with start level greater than 1, only show menu items
     // from the current active trail. Adjust the root according to the current
     // position in the menu in order to determine if we can show the subtree.
+    // @see #2631468.
     if ($level > 1) {
       if (count($parameters->activeTrail) >= $level) {
         // Active trail array is child-first. Reverse it, and pull the new menu
