@@ -1,4 +1,6 @@
 #Menu block current language
+[![Build Status](https://travis-ci.org/tuutti/menu_block_current_language.svg?branch=8.x-1.x)](https://travis-ci.org/tuutti/menu_block_current_language)
+
 Menu block current language provides a replacement for
 core's Menu block that filters out the untranslated menu links.
 
