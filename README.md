@@ -17,6 +17,8 @@ Supported menu link types:
 
 Enabled menu link types can be configured on the "Configure block" page.
 
+##Custom menu link types
+
 Custom menu links can expose their multilingual capabilities by:
  - Implementing the
  `\Drupal\menu_block_current_language\MenuLinkTranslatableInterface` interface.
