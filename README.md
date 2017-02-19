@@ -26,16 +26,7 @@ Custom menu links can expose their multilingual capabilities by:
  `\Drupal\menu_block_current_language\Event\Events::HAS_TRANSLATION` event.
 
 ##Installation with composer
-Add the following code to your composer.json file under the "repositories" key:
-
-```
-{
-  "type": "git",
-  "url": "tuutti@git.drupal.org:sandbox/tuutti/2832329.git"
-}
-```
-
-and execute `composer require drupal/menu_block_current_language`.
+`composer require drupal/menu_block_current_language`.
 
 ##Similar modules
 
