@@ -65,7 +65,7 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
   protected function setUp() {
     parent::setUp();
 
-    $this->adminUser = $this->drupalCreateUser(array('administer languages', 'access administration pages'));
+    $this->adminUser = $this->drupalCreateUser(['administer languages', 'access administration pages']);
     // User to check non-admin access.
     $this->regularUser = $this->drupalCreateUser();
 
