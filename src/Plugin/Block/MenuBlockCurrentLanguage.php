@@ -33,6 +33,7 @@ class MenuBlockCurrentLanguage extends SystemMenuBlock {
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     /** @var \Drupal\menu_block_current_language\Plugin\Block\MenuBlockCurrentLanguage $instance */
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
+    // This allow us to instantiate this without calling the parent constructor.
     $instance->setMenuActiveTrail($container->get('menu.active_trail'));
 
     return $instance;
