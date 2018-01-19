@@ -3,8 +3,10 @@
 namespace Drupal\menu_block_current_language\Plugin\Block;
 
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Menu\MenuActiveTrailInterface;
 use Drupal\Core\Menu\MenuTreeParameters;
 use Drupal\system\Plugin\Block\SystemMenuBlock;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Provides a generic Menu block.
@@ -17,6 +19,38 @@ use Drupal\system\Plugin\Block\SystemMenuBlock;
  * )
  */
 class MenuBlockCurrentLanguage extends SystemMenuBlock {
+
+  /**
+   * The menu active trail.
+   *
+   * @var \Drupal\Core\Menu\MenuActiveTrailInterface
+   */
+  protected $menuActiveTrail;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    /** @var \Drupal\menu_block_current_language\Plugin\Block\MenuBlockCurrentLanguage $instance */
+    $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
+    $instance->setMenuActiveTrail($container->get('menu.active_trail'));
+
+    return $instance;
+  }
+
+  /**
+   * Sets the menu active trail.
+   *
+   * @param \Drupal\Core\Menu\MenuActiveTrailInterface $activeTrail
+   *   The active menu trail.
+   *
+   * @return $this
+   *   The self.
+   */
+  public function setMenuActiveTrail(MenuActiveTrailInterface $activeTrail) {
+    $this->menuActiveTrail = $activeTrail;
+    return $this;
+  }
 
   /**
    * {@inheritdoc}
