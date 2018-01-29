@@ -66,9 +66,6 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     parent::setUp();
 
     $this->adminUser = $this->drupalCreateUser(['administer languages', 'access administration pages']);
-    // User to check non-admin access.
-    $this->regularUser = $this->drupalCreateUser();
-
     $this->drupalLogin($this->adminUser);
 
     $edit = [
@@ -77,6 +74,9 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     ];
     $this->drupalPostForm('admin/config/regional/language/detection', $edit, t('Save settings'));
     $this->menuBlock = $this->placeBlock('menu_block_current_language:main');
+    // Make sure we are not logged in.
+    $this->drupalLogout();
+
   }
 
   /**
@@ -271,6 +271,15 @@ class MenuBlockCurrentLanguageTest extends ContentTranslationTestBase {
     $this->drupalGet('test-page', ['query' => ['language' => 'en']]);
     $this->assertLink('Home');
     $this->assertNoLink('French home');
+  }
+
+  /**
+   * Make sure this works as authenticated user as well.
+   */
+  public function testAuthenticated() {
+    $this->drupalLogin($this->adminUser);
+
+    $this->testMenuBlockLanguageFilters();
   }
 
 }
