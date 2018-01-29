@@ -2,9 +2,11 @@
 
 namespace Drupal\menu_block_current_language;
 
+use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\Core\Menu\InaccessibleMenuLink;
 use Drupal\Core\Menu\MenuLinkDefault;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\locale\StringStorageInterface;
@@ -169,7 +171,7 @@ class MenuLinkTreeManipulator {
       if (isset($providers[$provider]) && empty($providers[$provider])) {
         continue;
       }
-      /** @var HasTranslationEvent $event */
+      /** @var \Drupal\menu_block_current_language\Event\HasTranslationEvent $event */
       // Allow other modules to determine visibility as well.
       $event = $this->eventDispatcher->dispatch(Events::HAS_TRANSLATION, new HasTranslationEvent($link, TRUE));
 
@@ -186,7 +188,7 @@ class MenuLinkTreeManipulator {
       }
       // String translated menu links.
       elseif ($link->getPluginDefinition()['title'] instanceof TranslatableMarkup) {
-        /** @var TranslatableMarkup $markup */
+        /** @var \Drupal\Core\StringTranslation\TranslatableMarkup $markup */
         $markup = $link->getPluginDefinition()['title'];
 
         if (!$this->hasStringTranslation($markup)) {
@@ -208,7 +210,7 @@ class MenuLinkTreeManipulator {
         /** @var \Drupal\language\Config\LanguageConfigOverride $config */
         $config = $this->languageManager->getLanguageConfigOverride($current_language, $view_id);
         // Configuration override will be marked as a new if one does not
-        // exist for current language (thus has no translation).
+        // exist for the current language (thus has no translation).
         if ($config->isNew()) {
           $event->setHasTranslation(FALSE);
         }
@@ -221,7 +223,7 @@ class MenuLinkTreeManipulator {
         }
       }
       if ($event->hasTranslation() === FALSE) {
-        unset($tree[$index]);
+        $tree[$index]->access = AccessResult::forbidden();
       }
     }
     return $tree;
