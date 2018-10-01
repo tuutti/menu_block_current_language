@@ -1,6 +1,6 @@
-name: Menu block current language views test
+name: Menu Block Current Language Views Test
 type: module
 core: 8.x
 dependencies:
-  - views
-  - node
+  - drupal:views
+  - drupal:node
