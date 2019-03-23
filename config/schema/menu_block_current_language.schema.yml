@@ -5,6 +5,9 @@ block.settings.menu_block_current_language:*:
     level:
       type: integer
       label: 'Starting level'
+    expand_all_items:
+      type: boolean
+      label: 'Expand all items'
     depth:
       type: integer
       label: 'Maximum number of levels'
