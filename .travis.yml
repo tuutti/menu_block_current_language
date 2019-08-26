@@ -19,6 +19,9 @@ php:
 matrix:
   fast_finish: true
 
+services:
+  - mysql
+
 env:
   global:
     - PHANTOMJS2_VERSION="2.0.0"
