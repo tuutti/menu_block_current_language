@@ -5,8 +5,8 @@ namespace Drupal\menu_block_current_language;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
-use Drupal\Core\Menu\InaccessibleMenuLink;
 use Drupal\Core\Menu\MenuLinkDefault;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\locale\StringStorageInterface;
@@ -154,7 +154,8 @@ class MenuLinkTreeManipulator {
    *   The manipulated menu link tree.
    */
   public function filterLanguages(array $tree, array $providers = []) {
-    $current_language = $this->languageManager->getCurrentLanguage()->getId();
+    $current_language = $this->languageManager
+      ->getCurrentLanguage(LanguageInterface::TYPE_CONTENT)->getId();
 
     foreach ($tree as $index => $item) {
       // Handle expanded menu links.
