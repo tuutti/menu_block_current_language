@@ -2,6 +2,7 @@ name: Menu Block Current Language
 type: module
 description: Filters out all the menu links that does not have translation for the current language.
 core: 8.x
+core_version_requirement: ^8 || ^9
 dependencies:
   - drupal:block
   - drupal:locale
